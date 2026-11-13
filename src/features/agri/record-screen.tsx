@@ -1,7 +1,7 @@
 import { Plus, Printer, Search, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { daysUntil, money, nextNumber, num, text, totalsOf, uid } from "./format";
+import { daysUntil, linesOf, money, nextNumber, num, text, totalsOf, uid } from "./format";
 import { actionsFor } from "./actions";
 import { buildDoc, listDoc } from "./print";
 import type { ScreenProps } from "./shell";
@@ -165,6 +165,8 @@ export function RecordsScreen(props: RecordsScreenProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   /** Click a column heading to sort by it; click again to reverse. */
   const [sort, setSort] = useState<{ key: string; down: boolean } | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Row | null>(null);
+  const [productTab, setProductTab] = useState<"Overview" | "Manufacturers & Batches" | "Transactions">("Overview");
 
   // Opened from a shortcut elsewhere (for example "Receive payment" on an invoice).
   // Values handed over by that screen are laid over the blank form.
@@ -259,6 +261,51 @@ export function RecordsScreen(props: RecordsScreenProps) {
 
   const titleKey = module.numberKey ?? columns[0]?.key ?? "id";
 
+  if (module.id === "products" && selectedProduct) {
+    const productIds = Array.isArray(selectedProduct.duplicateProductIds) ? selectedProduct.duplicateProductIds.map(String) : [selectedProduct.id];
+    const productNames = new Set(productIds.map((id) => savedRows.find((row) => row.id === id)?.name).filter(Boolean).map((name) => text(name).trim().toLowerCase()));
+    const sourceProducts = savedRows.filter((row) => productIds.includes(row.id));
+    const batches = (api.store.batches ?? []).filter((batch) => productNames.has(text(batch.product).trim().toLowerCase()));
+    const sales = (api.store["sales-invoices"] ?? []).filter((doc) => linesOf(doc).some((line) => productNames.has(text(line.product).trim().toLowerCase())));
+    const purchases = (api.store["goods-receipts"] ?? []).filter((doc) => linesOf(doc).some((line) => productNames.has(text(line.product).trim().toLowerCase())));
+    const manufacturers = [...new Set([...sourceProducts.map((row) => text(row.brand)), ...batches.map((batch) => text(batch.company || batch.manufacturer || batch.supplier))].filter(Boolean))];
+    return (
+      <div className="ag-product-detail">
+        <header className="ag-page-head">
+          <div><button className="ag-link" onClick={() => setSelectedProduct(null)}>← Back to products</button><h1>{text(selectedProduct.name)}</h1><p>{text(selectedProduct.category)} · {text(selectedProduct.packSize)} {text(selectedProduct.unit)}</p></div>
+          <button className="ag-btn ag-btn-primary" onClick={() => startEdit(sourceProducts[0] ?? selectedProduct)}>Edit product</button>
+        </header>
+        <nav className="ag-product-detail-tabs">
+          {(["Overview", "Manufacturers & Batches", "Transactions"] as const).map((tab) => <button key={tab} className={productTab === tab ? "ag-on" : ""} onClick={() => setProductTab(tab)}>{tab}</button>)}
+        </nav>
+        {productTab === "Overview" && <>
+          <div className="ag-stats">
+            <div className="ag-stat"><dt>Total stock</dt><dd>{num(selectedProduct.stock).toLocaleString("en-IN")}</dd></div>
+            <div className="ag-stat"><dt>Purchase price</dt><dd>{money(selectedProduct.purchasePrice)}</dd></div>
+            <div className="ag-stat"><dt>Selling price</dt><dd>{money(selectedProduct.sellPrice)}</dd></div>
+            <div className="ag-stat"><dt>MRP</dt><dd>{money(selectedProduct.mrp)}</dd></div>
+          </div>
+          <section className="ag-card"><h2>Product information</h2><dl className="ag-product-info">
+            <div><dt>Category</dt><dd>{text(selectedProduct.category) || "—"}</dd></div><div><dt>Manufacturer / Brand</dt><dd>{manufacturers.join(", ") || "—"}</dd></div>
+            <div><dt>Pack size</dt><dd>{text(selectedProduct.packSize) || "—"}</dd></div><div><dt>Unit</dt><dd>{text(selectedProduct.unit) || "—"}</dd></div>
+            <div><dt>HSN</dt><dd>{text(selectedProduct.hsn) || "—"}</dd></div><div><dt>GST</dt><dd>{text(selectedProduct.gst) || "—"}%</dd></div>
+            <div><dt>Reorder level</dt><dd>{text(selectedProduct.reorder) || "0"}</dd></div><div><dt>Status</dt><dd>{text(selectedProduct.status) || "—"}</dd></div>
+          </dl></section>
+        </>}
+        {productTab === "Manufacturers & Batches" && <section className="ag-card ag-table-card">
+          <div className="ag-card-head ag-card-head-pad"><h2>Manufacturers & batches</h2><span className="ag-count">{batches.length}</span></div>
+          <div className="ag-table-scroll"><table className="ag-table"><thead><tr><th>Manufacturer / Supplier</th><th>Batch / Lot</th><th>Mfg. date</th><th>Expiry date</th><th className="ag-r">Quantity</th><th className="ag-r">Purchase rate</th><th className="ag-r">MRP</th></tr></thead><tbody>
+            {batches.map((batch) => <tr key={batch.id}><td>{text(batch.company || batch.manufacturer || batch.supplier) || "—"}</td><td>{text(batch.batchNo) || "—"}</td><td>{text(batch.mfgDate) || "—"}</td><td>{text(batch.expiryDate) || "—"}</td><td className="ag-r">{num(batch.qty).toLocaleString("en-IN")}</td><td className="ag-r">{money(batch.purchaseRate || batch.rate)}</td><td className="ag-r">{money(batch.mrp)}</td></tr>)}
+          </tbody></table></div>
+          {batches.length === 0 && <Empty title="No batch records found">Batch details will appear when stock is received.</Empty>}
+        </section>}
+        {productTab === "Transactions" && <section className="ag-card ag-table-card"><div className="ag-card-head ag-card-head-pad"><h2>Purchase and sales history</h2></div><div className="ag-table-scroll"><table className="ag-table"><thead><tr><th>Type</th><th>Document</th><th>Date</th><th>Party</th><th className="ag-r">Quantity</th></tr></thead><tbody>
+          {[...purchases.map((doc) => ({doc,type:"Purchase"})),...sales.map((doc) => ({doc,type:"Sale"}))].map(({doc,type}) => <tr key={doc.id}><td>{type}</td><td>{text(doc.no)}</td><td>{text(doc.date)}</td><td>{text(type === "Sale" ? doc.customer : doc.supplier)}</td><td className="ag-r">{linesOf(doc).filter((line) => productNames.has(text(line.product).trim().toLowerCase())).reduce((sum,line) => sum + num(line.qty),0).toLocaleString("en-IN")}</td></tr>)}
+          </tbody></table></div></section>}
+      </div>
+    );
+  }
+
   return (
     <>
       <header className="ag-page-head">
@@ -346,7 +393,7 @@ export function RecordsScreen(props: RecordsScreenProps) {
               </thead>
               <tbody>
                 {filtered.map((row) => (
-                  <tr key={row.id} className={row.status === "Cancelled" ? "ag-row-void" : ""} onClick={() => (onRowOpen ? onRowOpen(row) : startEdit(row))}>
+                  <tr key={row.id} className={row.status === "Cancelled" ? "ag-row-void" : ""} onClick={() => (module.id === "products" ? (setSelectedProduct(row), setProductTab("Overview")) : onRowOpen ? onRowOpen(row) : startEdit(row))}>
                     {columns.map((column) => (
                       <td key={column.key} className={isRight(column.kind) ? "ag-r" : ""}>
                         <Cell column={column} row={row} store={api.store} />
