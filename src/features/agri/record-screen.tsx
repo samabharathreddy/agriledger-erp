@@ -127,9 +127,36 @@ export interface RecordsScreenProps extends ScreenProps {
   filterLabel?: string;
 }
 
+/** Collapse duplicate product catalogue rows for display only. Original records stay saved. */
+const uniqueProductRows = (rows: Row[]): Row[] => {
+  const groups = new Map<string, Row[]>();
+  rows.forEach((row) => {
+    const name = text(row.name).trim().replace(/\\s+/g, " ").toLocaleLowerCase();
+    const pack = text(row.packSize).trim().replace(/\\s+/g, " ").toLocaleLowerCase();
+    const unit = text(row.unit).trim().toLocaleLowerCase();
+    const category = text(row.category).trim().toLocaleLowerCase();
+    const key = [name, pack, unit, category].join("::");
+    const group = groups.get(key) ?? [];
+    group.push(row);
+    groups.set(key, group);
+  });
+  return [...groups.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    const first = group[0];
+    const brands = [...new Set(group.map((row) => text(row.brand).trim()).filter(Boolean))];
+    return {
+      ...first,
+      stock: group.reduce((total, row) => total + num(row.stock), 0),
+      brand: brands.join(", "),
+      duplicateCount: group.length,
+      duplicateProductIds: group.map((row) => row.id),
+    };
+  });
+};
+
 export function RecordsScreen(props: RecordsScreenProps) {
   const { module, api, notify, go, ui, openNew, prefill, onOpened, filter, above, toolbarExtra, primary, onRowOpen, openEditId, filterLabel } = props;
-  const rows = api.store[module.id] ?? [];
+  const savedRows = api.store[module.id] ?? [];\n  // Group duplicate product names in the catalogue without deleting or merging source records.\n  const rows = module.id === "products" ? uniqueProductRows(savedRows) : savedRows;
   const columns = module.columns ?? [];
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState("All");
