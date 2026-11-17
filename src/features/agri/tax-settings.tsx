@@ -36,7 +36,7 @@ export function TaxSettings({ api, notify }: ScreenProps) {
   const [partDraft, setPartDraft] = useState<TaxPart | null>(null);
   const [groupDraft, setGroupDraft] = useState<TaxGroup | null>(null);
   const [saved, setSaved] = useState(false);
-  const settings = store["tax-settings"]?.[0] ?? { id: "tax-settings-main", enableGst: true, enableHsn: true, reverseCharge: false, placeOfSupply: true, composite: false, tcs: false };
+  const settings: Row = store["tax-settings"]?.[0] ?? { id: "tax-settings-main", enableGst: true, enableHsn: true, reverseCharge: false, placeOfSupply: true, composite: false, tcs: false };
   const parts = useMemo(() => store["tax-components"]?.length ? asParts(store["tax-components"]) : defaultParts, [store]);
   const groups = useMemo(() => {
     if (store["tax-groups"]?.length) return asGroups(store["tax-groups"]);
@@ -90,7 +90,7 @@ export function TaxSettings({ api, notify }: ScreenProps) {
     <div className="ag-tax-page">
       <header className="ag-tax-head">
         <div><h1>Taxes &amp; GST</h1><p>Configure GST registration, tax defaults and invoice tax behaviour.</p></div>
-        <div className="ag-tax-head-actions"><button className="ag-btn ag-btn-primary" onClick={saveSettings}>Save settings</button><button className="ag-icon-btn" aria-label="Close tax settings" onClick={() => window.history.back()}><X size={18}/></button></div>
+        <div className="ag-tax-head-actions"><button className="ag-btn ag-btn-primary" onClick={saveSettings}>Save settings</button><button className="ag-icon-btn" aria-label="Close tax settings" onClick={() => go("gst")}><X size={18}/></button></div>
       </header>
 
       <div className="ag-tax-grid">
