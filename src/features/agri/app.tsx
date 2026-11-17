@@ -27,7 +27,8 @@ const CUSTOM: Record<string, (props: PageProps) => React.ReactNode> = {
   stock: StockOverview,
   dues: Dues,
   cashbook: Cashbook,
-  gst: GstSummary,\n  "tax-settings": TaxSettings,
+  gst: GstSummary,
+  "tax-settings": TaxSettings,
   reports: Reports,
 };
 
