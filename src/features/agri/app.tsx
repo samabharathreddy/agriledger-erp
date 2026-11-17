@@ -8,7 +8,7 @@ import { FormScreen, RecordsScreen } from "./record-screen";
 import { SaleBill } from "./sale";
 import { Cashbook, Dashboard, Dues, GstSummary, Reports, StockOverview } from "./screens";
 import { Customers, SalesInvoices } from "./screens2";
-import { SeasonSettlement } from "./screens3";
+import { SeasonSettlement } from "./screens3";\nimport { TaxSettings } from "./tax-settings";
 import type { Go, ScreenProps, Ui } from "./shell";
 import type { HistoryEntry } from "./store";
 import { useAgriStore } from "./store";
@@ -27,7 +27,7 @@ const CUSTOM: Record<string, (props: PageProps) => React.ReactNode> = {
   stock: StockOverview,
   dues: Dues,
   cashbook: Cashbook,
-  gst: GstSummary,
+  gst: GstSummary,\n  "tax-settings": TaxSettings,
   reports: Reports,
 };
 
