@@ -31,7 +31,7 @@ const id = () => `tax-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const asParts = (rows: Row[]): TaxPart[] => rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ""), rate: Number(r.rate ?? 0), type: String(r.type ?? "Other") }));
 const asGroups = (rows: Row[]): TaxGroup[] => rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ""), components: Array.isArray(r.components) ? r.components.map(String) : [] }));
 
-export function TaxSettings({ api, notify }: ScreenProps) {
+export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
   const { store } = api;
   const [partDraft, setPartDraft] = useState<TaxPart | null>(null);
   const [groupDraft, setGroupDraft] = useState<TaxGroup | null>(null);
@@ -49,13 +49,9 @@ export function TaxSettings({ api, notify }: ScreenProps) {
   }, [store, parts]);
 
   const persistRows = (module: string, rows: Array<TaxPart | TaxGroup>) => {
-    const current = store[module] ?? [];
-    rows.forEach((row) => {
-      const savedRow: Row = { ...row, id: row.id };
-      if (current.some((r) => r.id === row.id)) api.update(module, savedRow, "Tax configuration updated");
-      else api.create(module, savedRow);
-    });
-    current.filter((r) => !rows.some((row) => row.id === r.id)).forEach((r) => api.remove(module, r.id));
+    // Replace the module list atomically. Multiple create/update/remove calls in
+    // one click can otherwise race and overwrite each other's state updates.
+    api.replace(module, rows.map((row) => ({ ...row, id: row.id } as Row)));
   };
 
   const saveSettings = () => {
@@ -90,7 +86,7 @@ export function TaxSettings({ api, notify }: ScreenProps) {
     <div className="ag-tax-page">
       <header className="ag-tax-head">
         <div><h1>Taxes &amp; GST</h1><p>Configure GST registration, tax defaults and invoice tax behaviour.</p></div>
-        <div className="ag-tax-head-actions"><button className="ag-btn ag-btn-primary" onClick={saveSettings}>Save settings</button><button className="ag-icon-btn" aria-label="Close tax settings" onClick={() => go("gst")}><X size={18}/></button></div>
+        <div className="ag-tax-head-actions"><button type="button" className="ag-btn ag-btn-primary" onClick={saveSettings}>Save settings</button><button type="button" className="ag-icon-btn" aria-label="Close tax settings" onClick={() => go("gst")}><X size={18}/></button></div>
       </header>
 
       <div className="ag-tax-grid">
@@ -112,7 +108,7 @@ export function TaxSettings({ api, notify }: ScreenProps) {
         </section>
 
         <section className="ag-tax-panel ag-tax-panel-rates">
-          <header><span className="ag-tax-icon"><b>%</b></span><div><h2>Tax Rates</h2><p>Manage IGST, CGST and SGST rates</p></div><button className="ag-tax-add" onClick={() => setPartDraft({id:id(),name:"",rate:0,type:"Other"})}><Plus size={16}/> Add Rate</button></header>
+          <header><span className="ag-tax-icon"><b>%</b></span><div><h2>Tax Rates</h2><p>Manage IGST, CGST and SGST rates</p></div><button type="button" className="ag-tax-add" onClick={() => setPartDraft({id:id(),name:"",rate:0,type:"Other"})}><Plus size={16}/> Add Rate</button></header>
           <div className="ag-tax-table-head"><b>Tax Rate</b><b>Components</b><b>Rate</b><span/></div>
           <div className="ag-tax-list">
             {groups.map((group) => {
@@ -122,19 +118,19 @@ export function TaxSettings({ api, notify }: ScreenProps) {
                 <div><b className="ag-tax-rate-name">{group.name.replace("GST@", "IGST@")}</b><small>{components.map(p => p.name).join(" + ") || "No components selected"}</small></div>
                 <div className="ag-tax-component-preview">{components.map(p => <small key={p.id}>{p.name}</small>)}</div>
                 <b className="ag-tax-rate-value">{total}%</b>
-                <div className="ag-tax-row-actions"><button aria-label="Edit tax group" onClick={() => setGroupDraft(group)}><Pencil size={15}/></button><button aria-label="Delete tax group" onClick={() => { if(window.confirm("Delete this tax group?")) persistRows("tax-groups", groups.filter(g => g.id !== group.id)); }}><Trash2 size={15}/></button></div>
+                <div className="ag-tax-row-actions"><button type="button" aria-label="Edit tax group" onClick={() => setGroupDraft(group)}><Pencil size={15}/></button><button type="button" aria-label="Delete tax group" onClick={() => ui.confirm({ title: "Delete tax group?", body: `Delete ${group.name}? This will not change existing bills.`, action: "Delete", danger: true, onConfirm: () => persistRows("tax-groups", groups.filter(g => g.id !== group.id)) })}><Trash2 size={15}/></button></div>
               </div>;
             })}
           </div>
         </section>
 
         <section className="ag-tax-panel ag-tax-panel-groups">
-          <header><span className="ag-tax-icon"><span>⌖</span></span><div><h2>Tax Group</h2><p>Combined state tax groups</p></div><button className="ag-tax-add" onClick={() => setGroupDraft({id:id(),name:"",components:[]})}><Plus size={16}/> Add Group</button></header>
+          <header><span className="ag-tax-icon"><span>⌖</span></span><div><h2>Tax Group</h2><p>Combined state tax groups</p></div><button type="button" className="ag-tax-add" onClick={() => setGroupDraft({id:id(),name:"",components:[]})}><Plus size={16}/> Add Group</button></header>
           <div className="ag-tax-table-head"><b>Group Name</b><b>Components</b><span/></div>
           <div className="ag-tax-list">
             {groups.map(group => <div className="ag-tax-group-row" key={group.id}>
               <b>{group.name}</b><div className="ag-tax-component-preview">{group.components.map(key => parts.find(p => p.id === key)).filter(Boolean).map(p => <small key={p!.id}>{p!.name}</small>)}</div>
-              <div className="ag-tax-row-actions"><button aria-label="Edit tax group" onClick={() => setGroupDraft(group)}><Pencil size={15}/></button><button aria-label="Delete tax group" onClick={() => { if(window.confirm("Delete this tax group?")) persistRows("tax-groups", groups.filter(g => g.id !== group.id)); }}><Trash2 size={15}/></button></div>
+              <div className="ag-tax-row-actions"><button type="button" aria-label="Edit tax group" onClick={() => setGroupDraft(group)}><Pencil size={15}/></button><button type="button" aria-label="Delete tax group" onClick={() => ui.confirm({ title: "Delete tax group?", body: `Delete ${group.name}? This will not change existing bills.`, action: "Delete", danger: true, onConfirm: () => persistRows("tax-groups", groups.filter(g => g.id !== group.id)) })}><Trash2 size={15}/></button></div>
             </div>)}
           </div>
         </section>
@@ -142,20 +138,20 @@ export function TaxSettings({ api, notify }: ScreenProps) {
 
       {partDraft && <div className="ag-tax-modal-backdrop" role="presentation" onMouseDown={e => {if(e.target===e.currentTarget)setPartDraft(null);}}>
         <section className="ag-tax-modal" role="dialog" aria-modal="true" aria-labelledby="ag-tax-rate-title">
-          <button className="ag-tax-modal-close" onClick={() => setPartDraft(null)} aria-label="Close"><X/></button><h2 id="ag-tax-rate-title">{parts.some(p=>p.id===partDraft.id)?"Edit Tax Rate":"Add Tax Rate"}</h2>
+          <button type="button" className="ag-tax-modal-close" onClick={() => setPartDraft(null)} aria-label="Close"><X/></button><h2 id="ag-tax-rate-title">{parts.some(p=>p.id===partDraft.id)?"Edit Tax Rate":"Add Tax Rate"}</h2>
           <input placeholder="Tax Name" value={partDraft.name} onChange={e=>setPartDraft({...partDraft,name:e.target.value})}/>
           <div className="ag-tax-form-row"><input type="number" min="0" step="0.001" placeholder="Rate" value={partDraft.rate} onChange={e=>setPartDraft({...partDraft,rate:Number(e.target.value)})}/><select value={partDraft.type} onChange={e=>setPartDraft({...partDraft,type:e.target.value})}><option>Other</option><option>SGST</option><option>CGST</option><option>IGST</option></select></div>
-          <footer><button className="ag-btn ag-btn-soft" onClick={()=>setPartDraft(null)}>Cancel</button><button className="ag-btn ag-btn-primary" onClick={savePart}>Save</button></footer>
+          <footer><button type="button" className="ag-btn ag-btn-soft" onClick={()=>setPartDraft(null)}>Cancel</button><button type="button" className="ag-btn ag-btn-primary" onClick={savePart}>Save</button></footer>
         </section>
       </div>}
 
       {groupDraft && <div className="ag-tax-modal-backdrop" role="presentation" onMouseDown={e => {if(e.target===e.currentTarget)setGroupDraft(null);}}>
         <section className="ag-tax-modal ag-tax-group-modal" role="dialog" aria-modal="true" aria-labelledby="ag-tax-group-title">
-          <button className="ag-tax-modal-close" onClick={()=>setGroupDraft(null)} aria-label="Close"><X/></button><h2 id="ag-tax-group-title">{groups.some(g=>g.id===groupDraft.id)?"Edit Tax Group":"Add Tax Group"}</h2>
+          <button type="button" className="ag-tax-modal-close" onClick={()=>setGroupDraft(null)} aria-label="Close"><X/></button><h2 id="ag-tax-group-title">{groups.some(g=>g.id===groupDraft.id)?"Edit Tax Group":"Add Tax Group"}</h2>
           <label className="ag-tax-floating-label">Enter Group Name<input autoFocus placeholder="Group name" value={groupDraft.name} onChange={e=>setGroupDraft({...groupDraft,name:e.target.value})}/></label>
           <b className="ag-tax-select-title">Select Taxes</b>
           <div className="ag-tax-check-list">{parts.map(part=><label key={part.id}><span>{part.name}</span><small>{part.rate}%</small><input type="checkbox" checked={groupDraft.components.includes(part.id)} onChange={e=>setGroupDraft({...groupDraft,components:e.target.checked?[...groupDraft.components,part.id]:groupDraft.components.filter(x=>x!==part.id)})}/></label>)}</div>
-          <footer><button className="ag-btn ag-btn-soft" onClick={()=>setGroupDraft(null)}>Cancel</button><button className="ag-btn ag-btn-primary" onClick={saveGroup}>Save</button></footer>
+          <footer><button type="button" className="ag-btn ag-btn-soft" onClick={()=>setGroupDraft(null)}>Cancel</button><button type="button" className="ag-btn ag-btn-primary" onClick={saveGroup}>Save</button></footer>
         </section>
       </div>}
     </div>
