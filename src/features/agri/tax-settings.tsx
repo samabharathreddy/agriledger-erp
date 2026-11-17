@@ -3,8 +3,8 @@ import { Pencil, Plus, ShieldCheck, Trash2, X, Percent, Layers } from "lucide-re
 import type { ScreenProps } from "./shell";
 import type { Row } from "./types";
 
-type TaxPart = { id: string; name: string; rate: number; type: string };
-type TaxGroup = { id: string; name: string; components: string[] };
+type TaxPart = { id: string; name: string; rate: number; type: string; effectiveFrom?: string; effectiveTo?: string; status?: string };
+type TaxGroup = { id: string; name: string; code?: string; description?: string; status?: string; components: string[] };
 
 const defaultParts: TaxPart[] = [
   { id: "igst-0", name: "IGST@0%", rate: 0, type: "IGST" },
@@ -28,8 +28,8 @@ const defaultParts: TaxPart[] = [
 ];
 
 const makeId = () => `tax-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-const asParts = (rows: Row[]): TaxPart[] => rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ""), rate: Number(r.rate ?? 0), type: String(r.type ?? "Other") }));
-const asGroups = (rows: Row[]): TaxGroup[] => rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ""), components: Array.isArray(r.components) ? r.components.map(String) : [] }));
+const asParts = (rows: Row[]): TaxPart[] => rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ""), rate: Number(r.rate ?? 0), type: String(r.type ?? "Other"), effectiveFrom: String(r.effectiveFrom ?? ""), effectiveTo: String(r.effectiveTo ?? ""), status: String(r.status ?? "Active") }));
+const asGroups = (rows: Row[]): TaxGroup[] => rows.map((r) => ({ id: String(r.id), name: String(r.name ?? ""), code: String(r.code ?? ""), description: String(r.description ?? ""), status: String(r.status ?? "Active"), components: Array.isArray(r.components) ? r.components.map(String) : [] }));
 
 export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
   const { store } = api;
@@ -56,8 +56,8 @@ export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
     notify("GST settings saved");
   };
   const savePart = () => {
-    if (!partDraft?.name.trim() || !Number.isFinite(partDraft.rate) || partDraft.rate < 0) {
-      notify("Enter a valid tax name and rate");
+    if (!partDraft?.name.trim() || !Number.isFinite(partDraft.rate) || partDraft.rate < 0 || (partDraft.effectiveFrom && partDraft.effectiveTo && partDraft.effectiveTo < partDraft.effectiveFrom)) {
+      notify("Enter a valid tax name, rate and effective dates");
       return;
     }
     persistRows("tax-components", [...parts.filter((p) => p.id !== partDraft.id), partDraft]);
@@ -76,8 +76,12 @@ export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
     },
   });
   const saveGroup = () => {
-    if (!groupDraft?.name.trim() || !groupDraft.components.length) {
-      notify("Enter a group name and select at least one tax");
+    if (!groupDraft?.name.trim() || !groupDraft.code?.trim() || !groupDraft.components.length) {
+      notify("Enter a group name, unique group code and select at least one tax");
+      return;
+    }
+    if (groups.some(g => g.id !== groupDraft.id && (g.code || g.name.toUpperCase().replace(/[^A-Z0-9]/g, "")) === (groupDraft.code || "").trim().toUpperCase())) {
+      notify("Group code already exists");
       return;
     }
     persistRows("tax-groups", [...groups.filter((g) => g.id !== groupDraft.id), groupDraft]);
@@ -147,7 +151,7 @@ export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
             <button type="button" className={taxDrawer === "groups" ? "ag-on" : ""} onClick={() => setTaxDrawer("groups")}>Tax Groups</button>
           </div>
           {taxDrawer === "rates" ? <>
-            <div className="ag-tax-drawer-toolbar"><span>{parts.length} tax components</span><button type="button" className="ag-tax-add" onClick={() => setPartDraft({id:makeId(),name:"",rate:0,type:"Other"})}><Plus size={16}/> Add Rate</button></div>
+            <div className="ag-tax-drawer-toolbar"><span>{parts.length} tax components</span><button type="button" className="ag-tax-add" onClick={() => setPartDraft({id:makeId(),name:"",rate:0,type:"Other",effectiveFrom:new Date().toISOString().slice(0,10),effectiveTo:"",status:"Active"})}><Plus size={16}/> Add Rate</button></div>
             <div className="ag-tax-drawer-table">
               <div className="ag-tax-table-head ag-tax-rate-columns"><b>Tax Name</b><b>Tax Type</b><b>Rate</b><span/></div>
               {parts.map(part => <div className="ag-tax-rate-row ag-tax-rate-columns" key={part.id}>
@@ -156,7 +160,7 @@ export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
               </div>)}
             </div>
           </> : <>
-            <div className="ag-tax-drawer-toolbar"><span>{groups.length} tax groups</span><button type="button" className="ag-tax-add ag-tax-add-purple" onClick={() => setGroupDraft({id:makeId(),name:"",components:[]})}><Plus size={16}/> Add Group</button></div>
+            <div className="ag-tax-drawer-toolbar"><span>{groups.length} tax groups</span><button type="button" className="ag-tax-add ag-tax-add-purple" onClick={() => setGroupDraft({id:makeId(),name:"",code:"",description:"",status:"Active",components:[]})}><Plus size={16}/> Add Group</button></div>
             <div className="ag-tax-drawer-table">
               <div className="ag-tax-table-head ag-tax-group-columns"><b>Group Name</b><b>Components</b><span/></div>
               {groups.map(group => <div className="ag-tax-group-row ag-tax-group-columns" key={group.id}>
@@ -173,6 +177,8 @@ export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
           <button type="button" className="ag-tax-modal-close" onClick={() => setPartDraft(null)} aria-label="Close"><X/></button><h2 id="ag-tax-rate-title">{parts.some(p=>p.id===partDraft.id)?"Edit Tax Rate":"Add Tax Rate"}</h2>
           <label className="ag-tax-field-label">Tax Name<input autoFocus placeholder="e.g. IGST@18%" value={partDraft.name} onChange={e=>setPartDraft({...partDraft,name:e.target.value})}/></label>
           <div className="ag-tax-form-row"><label className="ag-tax-field-label">Rate (%)<input type="number" min="0" step="0.001" placeholder="Rate" value={partDraft.rate} onChange={e=>setPartDraft({...partDraft,rate:Number(e.target.value)})}/></label><label className="ag-tax-field-label">Tax Type<select value={partDraft.type} onChange={e=>setPartDraft({...partDraft,type:e.target.value})}><option>Other</option><option>SGST</option><option>CGST</option><option>IGST</option></select></label></div>
+          <div className="ag-tax-form-row"><label className="ag-tax-field-label">Effective From<input type="date" value={partDraft.effectiveFrom || ""} onChange={e=>setPartDraft({...partDraft,effectiveFrom:e.target.value})}/></label><label className="ag-tax-field-label">Effective To<input type="date" value={partDraft.effectiveTo || ""} onChange={e=>setPartDraft({...partDraft,effectiveTo:e.target.value})}/></label></div>
+          <label className="ag-tax-field-label">Status<select value={partDraft.status || "Active"} onChange={e=>setPartDraft({...partDraft,status:e.target.value})}><option>Active</option><option>Inactive</option></select></label>
           <footer><button type="button" className="ag-btn ag-btn-soft" onClick={()=>setPartDraft(null)}>Cancel</button><button type="button" className="ag-btn ag-btn-primary" onClick={savePart}>Save</button></footer>
         </section>
       </div>}
@@ -181,6 +187,9 @@ export function TaxSettings({ api, go, notify, ui }: ScreenProps) {
         <section className="ag-tax-modal ag-tax-group-modal" role="dialog" aria-modal="true" aria-labelledby="ag-tax-group-title">
           <button type="button" className="ag-tax-modal-close" onClick={()=>setGroupDraft(null)} aria-label="Close"><X/></button><h2 id="ag-tax-group-title">{groups.some(g=>g.id===groupDraft.id)?"Edit Tax Group":"Add Tax Group"}</h2>
           <label className="ag-tax-field-label">Group Name<input autoFocus placeholder="e.g. GST@18%" value={groupDraft.name} onChange={e=>setGroupDraft({...groupDraft,name:e.target.value})}/></label>
+          <div className="ag-tax-form-row"><label className="ag-tax-field-label">Group Code<input placeholder="e.g. GST18" value={groupDraft.code || ""} onChange={e=>setGroupDraft({...groupDraft,code:e.target.value.toUpperCase().replace(/\\s/g, "")})}/></label><label className="ag-tax-field-label">Status<select value={groupDraft.status || "Active"} onChange={e=>setGroupDraft({...groupDraft,status:e.target.value})}><option>Active</option><option>Inactive</option></select></label></div>
+          <label className="ag-tax-field-label">Description<input placeholder="Optional description" value={groupDraft.description || ""} onChange={e=>setGroupDraft({...groupDraft,description:e.target.value})}/></label>
+          <div className="ag-tax-group-total"><span>Total Tax Percentage</span><b>{parts.filter(p=>groupDraft.components.includes(p.id)).reduce((sum,p)=>sum+p.rate,0).toFixed(3).replace(/\\.?0+$/, "")}%</b></div>
           <b className="ag-tax-select-title">Select Taxes</b>
           <div className="ag-tax-check-list">{parts.map(part=><label key={part.id}><span>{part.name}</span><small>{part.rate}%</small><input type="checkbox" checked={groupDraft.components.includes(part.id)} onChange={e=>setGroupDraft({...groupDraft,components:e.target.checked?[...groupDraft.components,part.id]:groupDraft.components.filter(x=>x!==part.id)})}/></label>)}</div>
           <footer><button type="button" className="ag-btn ag-btn-soft" onClick={()=>setGroupDraft(null)}>Cancel</button><button type="button" className="ag-btn ag-btn-primary" onClick={saveGroup}>Save</button></footer>
