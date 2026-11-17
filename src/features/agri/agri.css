@@ -1234,3 +1234,51 @@ th.ag-r .ag-sort { flex-direction: row-reverse; }
 @media (max-width:1200px) { .ag-tax-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .ag-tax-panel-settings { grid-column:1 / -1; } .ag-tax-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:22px; } }
 @media (max-width:760px) { .ag-tax-grid { grid-template-columns:minmax(0,1fr); } .ag-tax-panel-settings { grid-column:auto; } .ag-tax-options { display:block; } .ag-tax-head { align-items:flex-start; } .ag-tax-head-actions .ag-icon-btn { display:none; } }
 @media (max-width:420px) { .ag-tax-panel > header { padding:14px 12px; gap:8px; } .ag-tax-panel > header h2 { font-size:15px; } .ag-tax-panel > header p { font-size:10px; } .ag-tax-add { padding:9px 8px; font-size:10px; } .ag-tax-table-head, .ag-tax-rate-row { margin-inline:8px; grid-template-columns:minmax(75px,1fr) minmax(72px,1fr) 36px 54px; gap:5px; } .ag-tax-panel-groups .ag-tax-table-head, .ag-tax-group-row { grid-template-columns:minmax(75px,.8fr) minmax(80px,1fr) 54px; gap:5px; } .ag-tax-list { padding-inline:8px; } .ag-tax-row-actions button { width:25px; height:28px; } .ag-tax-modal { padding:22px 18px; } }
+
+
+/* Taxes & GST: Tax List is the entry view; rates/groups open in a side drawer. */
+.ag-tax-main-layout { display:grid; grid-template-columns:minmax(300px,.9fr) minmax(360px,1.1fr); gap:20px; align-items:start; }
+.ag-tax-list-home { min-width:0; padding:22px; border:1px solid var(--ag-line); border-radius:18px; background:var(--ag-paper); box-shadow:0 8px 24px rgb(20 35 55 / .045); }
+.ag-tax-list-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+.ag-tax-list-heading h2 { margin:0; font-size:19px; }
+.ag-tax-list-heading p { margin:5px 0 0; color:var(--ag-muted); font-size:12px; }
+.ag-tax-list-heading > span { padding:7px 10px; border-radius:20px; background:var(--ag-primary-wash); color:var(--ag-primary-deep); font-size:11px; font-weight:700; white-space:nowrap; }
+.ag-tax-launch-row { width:100%; display:flex; align-items:center; gap:13px; padding:16px; margin-top:12px; text-align:left; border:1px solid var(--ag-line); border-radius:13px; background:var(--ag-paper); cursor:pointer; transition:border-color .16s,transform .16s,box-shadow .16s; }
+.ag-tax-launch-row:hover { transform:translateY(-1px); border-color:var(--ag-primary); box-shadow:0 7px 20px rgb(20 35 55 / .08); }
+.ag-tax-launch-icon { width:43px; height:43px; flex:0 0 43px; display:grid; place-items:center; border-radius:12px; background:#fff0df; color:#c46a00; }
+.ag-tax-launch-groups .ag-tax-launch-icon { background:#f1eaff; color:#7038b8; }
+.ag-tax-launch-row > span:nth-child(2) { min-width:0; flex:1; display:flex; flex-direction:column; gap:5px; }
+.ag-tax-launch-row b { color:var(--ag-ink); font-size:14px; }
+.ag-tax-launch-row small { color:var(--ag-muted); font-size:11px; }
+.ag-tax-launch-row strong { color:var(--ag-primary); font-size:12px; white-space:nowrap; }
+.ag-tax-launch-row strong span { margin-left:5px; font-size:19px; vertical-align:-1px; }
+.ag-tax-drawer-backdrop { position:fixed; z-index:950; inset:0; display:flex; justify-content:flex-end; background:rgb(15 23 42 / .38); }
+.ag-tax-drawer { width:min(720px,94vw); height:100%; display:flex; flex-direction:column; overflow:auto; padding:24px; background:var(--ag-paper); box-shadow:-18px 0 55px rgb(15 23 42 / .18); animation:ag-tax-slide-in .2s ease-out; }
+@keyframes ag-tax-slide-in { from { transform:translateX(24px); opacity:.7; } to { transform:translateX(0); opacity:1; } }
+.ag-tax-drawer-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; padding-bottom:18px; border-bottom:1px solid var(--ag-line); }
+.ag-tax-drawer-head h2 { margin:0; font-size:22px; }
+.ag-tax-drawer-head p { margin:5px 0 0; color:var(--ag-muted); font-size:12px; }
+.ag-tax-drawer-tabs { display:flex; gap:7px; padding:14px 0; border-bottom:1px solid var(--ag-line-soft); }
+.ag-tax-drawer-tabs button { padding:9px 15px; border-radius:8px; color:var(--ag-muted); font-size:12px; font-weight:700; }
+.ag-tax-drawer-tabs button.ag-on { background:var(--ag-primary-wash); color:var(--ag-primary-deep); }
+.ag-tax-drawer-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 0 12px; color:var(--ag-muted); font-size:12px; }
+.ag-tax-add-purple { background:#7028bd; }
+.ag-tax-rate-columns { grid-template-columns:minmax(130px,1.2fr) minmax(90px,.8fr) 65px 72px; }
+.ag-tax-group-columns { grid-template-columns:minmax(120px,.8fr) minmax(160px,1.2fr) 72px; }
+.ag-tax-type-pill { justify-self:start; padding:6px 9px; border-radius:20px; background:var(--ag-field); color:var(--ag-ink-2); font-size:10px; font-weight:700; }
+.ag-tax-drawer-table { flex:1; overflow:auto; }
+.ag-tax-drawer .ag-tax-table-head { margin:0; position:sticky; top:0; z-index:1; }
+.ag-tax-drawer .ag-tax-rate-row,.ag-tax-drawer .ag-tax-group-row { margin:0; }
+.ag-tax-field-label { display:block; min-width:0; color:var(--ag-muted); font-size:12px; font-weight:700; }
+.ag-tax-field-label input,.ag-tax-field-label select { display:block; width:100%; height:45px; margin-top:7px; padding:0 12px; border:1px solid var(--ag-input-line); border-radius:8px; background:#fff; color:var(--ag-ink); font:inherit; font-weight:400; }
+.ag-tax-field-label input:focus,.ag-tax-field-label select:focus { outline:2px solid rgb(57 133 237 / .14); border-color:#3985ed; }
+.ag-tax-modal .ag-tax-form-row { align-items:start; }
+@media (max-width:900px) { .ag-tax-main-layout { grid-template-columns:minmax(0,1fr); } }
+@media (max-width:560px) {
+  .ag-tax-main-layout { gap:14px; }
+  .ag-tax-list-home { padding:16px; }
+  .ag-tax-drawer { width:100%; padding:17px 13px; }
+  .ag-tax-rate-columns { grid-template-columns:minmax(100px,1fr) minmax(65px,.7fr) 48px 62px; gap:5px; }
+  .ag-tax-group-columns { grid-template-columns:minmax(90px,.7fr) minmax(100px,1fr) 58px; gap:5px; }
+  .ag-tax-drawer .ag-tax-row-actions button { width:27px; height:28px; }
+}
