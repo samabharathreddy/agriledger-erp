@@ -1072,7 +1072,7 @@ export const MODULES: ModuleDef[] = [
     ],
     seed: licences,
   },
-  { id: "gst", title: "GST summary", singular: "", description: "Tax collected on sales, tax paid on purchases, and what is left to pay.", icon: Percent, kind: "custom" },
+  { id: "gst", title: "GST summary", singular: "", description: "Tax collected on sales, tax paid on purchases, and what is left to pay.", icon: Percent, kind: "custom" },\n  { id: "tax-settings", title: "Taxes & GST", singular: "", description: "Configure GST settings, tax rates and tax groups.", icon: Percent, kind: "custom" },
 
   /* ---------------- Reports ---------------- */
   { id: "reports", title: "Reports", singular: "", description: "Profit, sales by category and best sellers.", icon: ChartColumn, kind: "custom" },
@@ -1235,7 +1235,7 @@ export const NAV: NavGroup[] = [
   { label: "Stock", modules: ["products", "stock", "batches", "stock-adjustments"] },
   { label: "Money", modules: ["receipts", "cash-advances", "season", "supplier-payments", "expenses", "dues", "cashbook"] },
   { label: "Compliance and reports", modules: ["licences", "gst", "reports"] },
-  { label: "Setup", modules: ["shop", "users", "brands", "tax-rates"] },
+  { label: "Setup", modules: ["shop", "users", "brands", "tax-rates", "tax-settings"] },
 ];
 
 export const moduleById = (id: string): ModuleDef =>
